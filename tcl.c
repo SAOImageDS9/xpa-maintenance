@@ -8,6 +8,13 @@
 
 #include <tcl.h>
 
+/* Check, if Tcl version supports Tcl_Size,
+   which was introduced in Tcl 8.7 and 9.
+*/
+#ifndef TCL_SIZE_MAX
+typedef int Tcl_Size;
+#endif
+
 /*
  *----------------------------------------------------------------------------
  *
@@ -219,7 +226,7 @@ static int XPATclHandler(client_data, call_data, paramlist, buf, len, nargs)
     Tcl_SetResult(xptr->interp, Tcl_GetStringFromObj(resultPtr, NULL),
 		  TCL_VOLATILE);
   } else {
-    result = (*info.proc)(info.clientData, xptr->interp, nargs, argv);
+    result = (*info.proc)(info.clientData, xptr->interp, nargs, (const char**)argv);
   }
 
   /* clean up */
@@ -294,7 +301,15 @@ static int XPATclSend(client_data, call_data, paramlist, buf, len)
      size_t *len;
 #endif
 {
-  return(XPATclHandler(client_data, call_data, paramlist, NULL, 0, 4));
+  XPA xpa = (XPA)call_data;
+  int result;
+
+  result = XPATclHandler(client_data, call_data, paramlist, NULL, 0, 4);
+  if( (result == 0) && xpa && xpa->comm ){
+    *buf = xpa->comm->buf;
+    *len = xpa->comm->len;
+  }
+  return(result);
 }
 
 /*
@@ -341,13 +356,13 @@ static int XPATclInfo(client_data, call_data, paramlist)
 #ifdef ANSI_FUNC
 static int
 XPANew_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPANew_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   char *xclass;
@@ -454,13 +469,13 @@ static int XPANew_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPAFree_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPAFree_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   XPA xpa;
@@ -525,13 +540,13 @@ static int XPAFree_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPAInfoNew_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPAInfoNew_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   char *xclass;
@@ -611,13 +626,13 @@ static int XPAInfoNew_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPACmdNew_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPACmdNew_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   char *xclass;
@@ -675,13 +690,13 @@ static int XPACmdNew_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPACmdAdd_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPACmdAdd_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   char *name;
@@ -788,13 +803,13 @@ static int XPACmdAdd_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPACmdDel_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPACmdDel_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   void *lval;
@@ -878,13 +893,13 @@ static int XPACmdDel_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPARec_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPARec_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
 #ifndef HAVE_CYGWIN
@@ -1079,17 +1094,18 @@ static int XPARec_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPASetBuf_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPASetBuf_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   int error;
   int len;
+  Tcl_Size tclLen;
   char *buf;
   XPA xpa;
 
@@ -1105,7 +1121,8 @@ static int XPASetBuf_Tcl(clientData, interp, objc, objv)
   }
 
   /* get buf */
-  buf = Tcl_GetStringFromObj(objv[2], &len);
+  buf = Tcl_GetStringFromObj(objv[2], &tclLen);
+  len = (int)tclLen;
   /* get len if specified */
   if( objc >= 4 ){
     if( (error = Tcl_GetIntFromObj(interp, objv[3], &len)) != TCL_OK )
@@ -1137,13 +1154,13 @@ static int XPASetBuf_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPAOpen_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPAOpen_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   char *mode;
@@ -1196,13 +1213,13 @@ static int XPAOpen_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPAClose_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPAClose_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   XPA xpa;
@@ -1244,13 +1261,13 @@ static int XPAClose_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPAGet_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPAGet_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   XPA xpa;
@@ -1359,33 +1376,33 @@ static int XPAGet_Tcl(clientData, interp, objc, objv)
     /* make lists from the return arguments and set the return variables */
     bufsPtr = Tcl_NewObj();
     Tcl_SetListObj(bufsPtr, got, bufsObjv);
-    Tcl_ObjSetVar2(interp, objv[5], NULL, bufsPtr, TCL_PARSE_PART1);
+    Tcl_ObjSetVar2(interp, objv[5], NULL, bufsPtr, 0);
     
     lensPtr = Tcl_NewObj();
     Tcl_SetListObj(lensPtr, got, lensObjv);
-    Tcl_ObjSetVar2(interp, objv[6], NULL, lensPtr, TCL_PARSE_PART1);
+    Tcl_ObjSetVar2(interp, objv[6], NULL, lensPtr, 0);
     
     if( cnames ){
       namesPtr = Tcl_NewObj();
       Tcl_SetListObj(namesPtr, got, namesObjv);
-      Tcl_ObjSetVar2(interp, objv[7], NULL, namesPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[7], NULL, namesPtr, 0);
     }
     
     if( cerrs ){
       errsPtr = Tcl_NewObj();
       Tcl_SetListObj(errsPtr, got, errsObjv);
-      Tcl_ObjSetVar2(interp, objv[8], NULL, errsPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[8], NULL, errsPtr, 0);
     }
   }
   else{
     nullPtr = Tcl_NewObj();
     Tcl_SetStringObj(nullPtr, "", -1);
-    Tcl_ObjSetVar2(interp, objv[5], NULL, nullPtr, TCL_PARSE_PART1);
-    Tcl_ObjSetVar2(interp, objv[6], NULL, nullPtr, TCL_PARSE_PART1);
+    Tcl_ObjSetVar2(interp, objv[5], NULL, nullPtr, 0);
+    Tcl_ObjSetVar2(interp, objv[6], NULL, nullPtr, 0);
     if( cnames )
-      Tcl_ObjSetVar2(interp, objv[7], NULL, nullPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[7], NULL, nullPtr, 0);
     if( cerrs )
-      Tcl_ObjSetVar2(interp, objv[8], NULL, nullPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[8], NULL, nullPtr, 0);
   }
 
   /* free up space */
@@ -1429,13 +1446,13 @@ static int XPAGet_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPAGetFd_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPAGetFd_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   XPA xpa;
@@ -1579,21 +1596,21 @@ static int XPAGetFd_Tcl(clientData, interp, objc, objv)
     if( cnames ){
       namesPtr = Tcl_NewObj();
       Tcl_SetListObj(namesPtr, got, namesObjv);
-      Tcl_ObjSetVar2(interp, objv[6], NULL, namesPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[6], NULL, namesPtr, 0);
     }
     if( cerrs ){
       errsPtr = Tcl_NewObj();
       Tcl_SetListObj(errsPtr, got, errsObjv);
-      Tcl_ObjSetVar2(interp, objv[7], NULL, errsPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[7], NULL, errsPtr, 0);
     }
   }
   else{
     nullPtr = Tcl_NewObj();
     Tcl_SetStringObj(nullPtr, "", -1);
     if( cnames )
-      Tcl_ObjSetVar2(interp, objv[6], NULL, nullPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[6], NULL, nullPtr, 0);
     if( cerrs )
-      Tcl_ObjSetVar2(interp, objv[7], NULL, nullPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[7], NULL, nullPtr, 0);
   }
 
   /* free up space */
@@ -1632,13 +1649,13 @@ static int XPAGetFd_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPASet_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPASet_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   XPA xpa;
@@ -1647,6 +1664,7 @@ static int XPASet_Tcl(clientData, interp, objc, objv)
   int i;
   int blen;
   int len;
+  Tcl_Size tclBlen;
   char *xpastr;
   char *tmpl;
   char *paramlist;
@@ -1689,7 +1707,8 @@ static int XPASet_Tcl(clientData, interp, objc, objv)
   tmpl = Tcl_GetStringFromObj(objv[2], NULL);
   paramlist = Tcl_GetStringFromObj(objv[3], NULL);
   mode = Tcl_GetStringFromObj(objv[4], NULL);
-  buf = Tcl_GetStringFromObj(objv[5], &blen);
+  buf = Tcl_GetStringFromObj(objv[5], &tclBlen);
+  blen = (int)tclBlen;
   if( (Tcl_GetIntFromObj(interp, objv[6], &len) != TCL_OK) || (len < 0) ){
     len = blen;
   }
@@ -1734,21 +1753,21 @@ static int XPASet_Tcl(clientData, interp, objc, objv)
     if( cnames ){
       namesPtr = Tcl_NewObj();
       Tcl_SetListObj(namesPtr, got, namesObjv);
-      Tcl_ObjSetVar2(interp, objv[7], NULL, namesPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[7], NULL, namesPtr, 0);
     }
     if( cerrs ){
       errsPtr = Tcl_NewObj();
       Tcl_SetListObj(errsPtr, got, errsObjv);
-      Tcl_ObjSetVar2(interp, objv[8], NULL, errsPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[8], NULL, errsPtr, 0);
     }
   }
   else{
     nullPtr = Tcl_NewObj();
     Tcl_SetStringObj(nullPtr, "", -1);
     if( cnames )
-      Tcl_ObjSetVar2(interp, objv[7], NULL, nullPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[7], NULL, nullPtr, 0);
     if( cerrs )
-      Tcl_ObjSetVar2(interp, objv[8], NULL, nullPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[8], NULL, nullPtr, 0);
   }
 
   /* free up space */
@@ -1786,13 +1805,13 @@ static int XPASet_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPASetFd_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPASetFd_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   XPA xpa;
@@ -1898,21 +1917,21 @@ static int XPASetFd_Tcl(clientData, interp, objc, objv)
     if( cnames ){
       namesPtr = Tcl_NewObj();
       Tcl_SetListObj(namesPtr, got, namesObjv);
-      Tcl_ObjSetVar2(interp, objv[6], NULL, namesPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[6], NULL, namesPtr, 0);
     }
     if( cerrs ){
       errsPtr = Tcl_NewObj();
       Tcl_SetListObj(errsPtr, got, errsObjv);
-      Tcl_ObjSetVar2(interp, objv[7], NULL, errsPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[7], NULL, errsPtr, 0);
     }
   }
   else{
     nullPtr = Tcl_NewObj();
     Tcl_SetStringObj(nullPtr, "", -1);
     if( cnames )
-      Tcl_ObjSetVar2(interp, objv[6], NULL, nullPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[6], NULL, nullPtr, 0);
     if( cerrs )
-      Tcl_ObjSetVar2(interp, objv[7], NULL, nullPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[7], NULL, nullPtr, 0);
   }
 
   /* free up space */
@@ -1950,13 +1969,13 @@ static int XPASetFd_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPAInfo_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPAInfo_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   XPA xpa;
@@ -2045,22 +2064,22 @@ static int XPAInfo_Tcl(clientData, interp, objc, objv)
     if( cnames ){
       namesPtr = Tcl_NewObj();
       Tcl_SetListObj(namesPtr, got, namesObjv);
-      Tcl_ObjSetVar2(interp, objv[5], NULL, namesPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[5], NULL, namesPtr, 0);
     }
 
     if( cerrs ){
       errsPtr = Tcl_NewObj();
       Tcl_SetListObj(errsPtr, got, errsObjv);
-      Tcl_ObjSetVar2(interp, objv[6], NULL, errsPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[6], NULL, errsPtr, 0);
     }
   }
   else{
     nullPtr = Tcl_NewObj();
     Tcl_SetStringObj(nullPtr, "", -1);
     if( cnames )
-      Tcl_ObjSetVar2(interp, objv[5], NULL, nullPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[5], NULL, nullPtr, 0);
     if( cerrs )
-      Tcl_ObjSetVar2(interp, objv[6], NULL, nullPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[6], NULL, nullPtr, 0);
   }
 
   /* free up space */
@@ -2098,13 +2117,13 @@ static int XPAInfo_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPAAccess_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPAAccess_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   XPA xpa;
@@ -2192,21 +2211,21 @@ static int XPAAccess_Tcl(clientData, interp, objc, objv)
     if( cnames ){
       namesPtr = Tcl_NewObj();
       Tcl_SetListObj(namesPtr, got, namesObjv);
-      Tcl_ObjSetVar2(interp, objv[5], NULL, namesPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[5], NULL, namesPtr, 0);
     }
     if( cerrs ){
       errsPtr = Tcl_NewObj();
       Tcl_SetListObj(errsPtr, got, errsObjv);
-      Tcl_ObjSetVar2(interp, objv[6], NULL, errsPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[6], NULL, errsPtr, 0);
     }
   }
   else{
     nullPtr = Tcl_NewObj();
     Tcl_SetStringObj(nullPtr, "", -1);
     if( cnames )
-      Tcl_ObjSetVar2(interp, objv[5], NULL, nullPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[5], NULL, nullPtr, 0);
     if( cerrs )
-      Tcl_ObjSetVar2(interp, objv[6], NULL, nullPtr, TCL_PARSE_PART1);
+      Tcl_ObjSetVar2(interp, objv[6], NULL, nullPtr, 0);
   }
 
   /* free up space */
@@ -2244,13 +2263,13 @@ static int XPAAccess_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPANSLookup_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPANSLookup_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   XPA xpa;
@@ -2328,19 +2347,19 @@ static int XPANSLookup_Tcl(clientData, interp, objc, objv)
     /* make lists from the return arguments and set the return variables */
     classesPtr = Tcl_NewObj();
     Tcl_SetListObj(classesPtr, got, classesObjv);
-    Tcl_ObjSetVar2(interp, objv[3], NULL, classesPtr, TCL_PARSE_PART1);
+    Tcl_ObjSetVar2(interp, objv[3], NULL, classesPtr, 0);
 
     namesPtr = Tcl_NewObj();
     Tcl_SetListObj(namesPtr, got, namesObjv);
-    Tcl_ObjSetVar2(interp, objv[4], NULL, namesPtr, TCL_PARSE_PART1);
+    Tcl_ObjSetVar2(interp, objv[4], NULL, namesPtr, 0);
     
     methodsPtr = Tcl_NewObj();
     Tcl_SetListObj(methodsPtr, got, methodsObjv);
-    Tcl_ObjSetVar2(interp, objv[5], NULL, methodsPtr, TCL_PARSE_PART1);
+    Tcl_ObjSetVar2(interp, objv[5], NULL, methodsPtr, 0);
     
     infosPtr = Tcl_NewObj();
     Tcl_SetListObj(infosPtr, got, infosObjv);
-    Tcl_ObjSetVar2(interp, objv[5], NULL, infosPtr, TCL_PARSE_PART1);
+    Tcl_ObjSetVar2(interp, objv[5], NULL, infosPtr, 0);
     
     /* free up the space */
     for(i=0; i<got; i++){
@@ -2365,10 +2384,10 @@ static int XPANSLookup_Tcl(clientData, interp, objc, objv)
   else{
     nullPtr = Tcl_NewObj();
     Tcl_SetStringObj(nullPtr, "", -1);
-    Tcl_ObjSetVar2(interp, objv[3], NULL, nullPtr, TCL_PARSE_PART1);
-    Tcl_ObjSetVar2(interp, objv[4], NULL, nullPtr, TCL_PARSE_PART1);
-    Tcl_ObjSetVar2(interp, objv[5], NULL, nullPtr, TCL_PARSE_PART1);
-    Tcl_ObjSetVar2(interp, objv[6], NULL, nullPtr, TCL_PARSE_PART1);
+    Tcl_ObjSetVar2(interp, objv[3], NULL, nullPtr, 0);
+    Tcl_ObjSetVar2(interp, objv[4], NULL, nullPtr, 0);
+    Tcl_ObjSetVar2(interp, objv[5], NULL, nullPtr, 0);
+    Tcl_ObjSetVar2(interp, objv[6], NULL, nullPtr, 0);
   }
 
   /* return the number of accesses as the tcl function result */
@@ -2396,13 +2415,13 @@ static int XPANSLookup_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPANSKeepAlive_Tcl(ClientData clientData, Tcl_Interp *interp,
-		   int objc, Tcl_Obj *CONST objv[])
+		   int objc, Tcl_Obj *const objv[])
 #else
 static int XPANSKeepAlive_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   XPA xpa;
@@ -2453,13 +2472,13 @@ static int XPANSKeepAlive_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPARemote_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPARemote_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   int got;
@@ -2559,13 +2578,13 @@ static int XPARemote_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPAError_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPAError_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   char *message;
@@ -2613,13 +2632,13 @@ static int XPAError_Tcl(clientData, interp, objc, objv)
 #ifdef ANSI_FUNC
 static int
 XPAMessage_Tcl(ClientData clientData, Tcl_Interp *interp,
-	   int objc, Tcl_Obj *CONST objv[])
+	   int objc, Tcl_Obj *const objv[])
 #else
 static int XPAMessage_Tcl(clientData, interp, objc, objv)
      ClientData clientData;
      Tcl_Interp *interp;
      int objc;
-     Tcl_Obj *CONST objv[];
+     Tcl_Obj *const objv[];
 #endif
 {
   char *message;
@@ -2682,9 +2701,9 @@ int Tclxpa_Init (vinterp)
 
   if(
 #ifdef USE_TCL_STUBS
-     Tcl_InitStubs(interp, "8.4", 0)
+     Tcl_InitStubs(interp, "8.4-10", 0)
 #else
-     Tcl_PkgRequire(interp, "Tcl", "8.4", 0)
+     Tcl_PkgRequire(interp, "Tcl", "8.4-10", 0)
 #endif
      == NULL) {
     return TCL_ERROR;
