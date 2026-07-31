@@ -8,8 +8,10 @@
 
 <h3> Public Release 2.2.1 (September, 2026)</h3>
 <ul>
-<li> Updated Windows to correctly build with `-mconsole` flag (link not compile flag)
+<li> Updated Windows to correctly build with `-mconsole` flag (link not compile flag), except
+  xpans which is built with `-mwindows` so it launches in the background sans terminal window.
 <li> Updated Windows to correctly use 64bit integers for pointer addresses (old 32bit behavior).
+<li> Updated Windows to correctly search PATH for xpans (colon separator not good on Windows)
 </ul>
 
 
